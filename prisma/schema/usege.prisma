@@ -1,0 +1,17 @@
+model Usage {
+  id        String   @id @default(cuid())
+  
+  seconds   Int
+  cost      Float?
+
+  clientId  String   @map("client_id")
+  client    Client   @relation(fields: [clientId], references: [id])
+
+  jobId     String   @unique
+  job       Job      @relation(fields: [jobId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("usages")
+}

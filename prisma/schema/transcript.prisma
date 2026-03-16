@@ -1,0 +1,14 @@
+model Transcript {
+  id             String   @id @default(cuid())
+
+  originalText   String   @map("original_text")
+  translatedText String?  @map("translated_text")
+
+  jobId          String   @unique @map("job_id")
+  job            Job      @relation(fields: [jobId], references: [id])
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("transcripts")
+}

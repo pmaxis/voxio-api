@@ -1,0 +1,31 @@
+model Job {
+  id           String      @id @default(cuid())
+
+  status       JobStatus
+  duration     Int?
+
+  clientId     String      @map("client_id")
+  client       Client      @relation(fields: [clientId], references: [id])
+
+  inputFileId  String?     @map("input_file_id")
+  inputFile    File?       @relation("InputFile", fields: [inputFileId], references: [id])
+
+  outputFileId String?     @map("output_file_id")
+  outputFile   File?       @relation("OutputFile", fields: [outputFileId], references: [id])
+
+  transcript   Transcript? 
+  credits      Credit[]
+  usage        Usage?
+
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@map("jobs")
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}

@@ -1,0 +1,24 @@
+model Credit {
+  id        String      @id @default(cuid())
+
+  amount    Int
+  type      CreditType
+
+  clientId  String      @map("client_id")
+  client    Client      @relation(fields: [clientId], references: [id])
+
+  jobId     String?     @map("job_id")
+  job       Job?        @relation(fields: [jobId], references: [id])
+
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@map("credits")
+}
+
+enum CreditType {
+  BONUS
+  USAGE
+  PURCHASE
+  REFUND
+}

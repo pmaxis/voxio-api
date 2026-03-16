@@ -1,0 +1,20 @@
+model File {
+  id         String   @id @default(cuid())
+
+  url        String
+  type       FileType
+  size       Int?
+
+  inputJobs  Job[]    @relation("InputFile")
+  outputJobs Job[]    @relation("OutputFile")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("files")
+}
+
+enum FileType {
+  INPUT_AUDIO
+  OUTPUT_AUDIO
+}
