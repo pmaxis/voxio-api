@@ -33,4 +33,7 @@ export default () => ({
   storage: {
     uploadPath: process.env.UPLOAD_PATH || process.env.UPLOADS_PATH || 'uploads',
   },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 });

@@ -21,4 +21,5 @@ export const validationSchema = Joi.object({
   BOT_TOKEN: Joi.string().optional().allow(''),
   UPLOAD_PATH: Joi.string().optional(),
   UPLOADS_PATH: Joi.string().optional(),
+  OPENAI_API_KEY: Joi.string().optional(),
 });

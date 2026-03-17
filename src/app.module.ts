@@ -17,6 +17,7 @@ import { ProfileModule } from '@/modules/profile/profile.module';
 import { BotModule } from '@/modules/bot/bot.module';
 import { ClientsModule } from '@/modules/clients/clients.module';
 import { FilesModule } from './modules/files/files.module';
+import { SpeechModule } from './infrastructure/speech/speech.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { FilesModule } from './modules/files/files.module';
       validationSchema: validationSchema,
     }),
     DatabaseModule,
+    SpeechModule,
     UsersModule,
     AuthModule,
     SessionsModule,

@@ -9,6 +9,6 @@ import { FilesStorage } from '@/modules/files/storage/files.storage';
   imports: [DatabaseModule],
   controllers: [FilesController],
   providers: [FilesRepository, FilesStorage, FilesService],
-  exports: [FilesService],
+  exports: [FilesService, FilesStorage],
 })
 export class FilesModule {}

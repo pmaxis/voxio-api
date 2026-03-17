@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Context, Telegraf } from 'telegraf';
+import { Input } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import { message } from 'telegraf/filters';
 import { Message } from 'telegraf/types';
 import { FilesService } from '@/modules/files/service/files.service';
+import { FilesStorage } from '@/modules/files/storage/files.storage';
+import { SpeechService } from '@/infrastructure/speech/speech.service';
 import { FileType } from '@/infrastructure/database/generated/enums';
 import type { UploadedFile } from '@/modules/files/types/uploaded-file.interface';
 
@@ -14,7 +17,11 @@ type AudioMessage = Message.AudioMessage;
 export class AudioHandler {
   private readonly logger = new Logger(AudioHandler.name);
 
-  constructor(private readonly filesService: FilesService) {}
+  constructor(
+    private readonly filesService: FilesService,
+    private readonly filesStorage: FilesStorage,
+    private readonly speechService: SpeechService,
+  ) {}
 
   register(bot: Telegraf<Context<Update>>): void {
     bot.on(message('voice'), (ctx) => this.handleAudio(ctx, 'voice'));
@@ -52,7 +59,33 @@ export class AudioHandler {
         type: FileType.INPUT_AUDIO,
       });
 
-      await ctx.reply(`Аудіо збережено. ID: ${file.id}`);
+      try {
+        const absolutePath = this.filesStorage.getAbsolutePath(file.url);
+        const { audio } = await this.speechService.process(absolutePath);
+
+        const outputFile: UploadedFile = {
+          fieldname: 'file',
+          originalname: 'output.ogg',
+          encoding: '7bit',
+          mimetype: 'audio/ogg',
+          buffer: audio,
+          size: audio.length,
+        };
+        await this.filesService.create(outputFile, {
+          type: FileType.OUTPUT_AUDIO,
+        });
+
+        const voiceInput = Input.fromBuffer(audio, 'voice.ogg');
+        if (audio.length <= 1024 * 1024) {
+          await ctx.replyWithVoice(voiceInput);
+        } else {
+          await ctx.replyWithAudio(voiceInput);
+        }
+      } catch (transcribeError) {
+        this.logger.error('Помилка транскрипції', transcribeError);
+        await ctx.reply('Аудіо збережено, але не вдалося розпізнати текст.');
+        return;
+      }
     } catch (error) {
       this.logger.error('Помилка завантаження аудіо', error);
       await ctx.reply('Не вдалося зберегти аудіо. Спробуйте пізніше.');
