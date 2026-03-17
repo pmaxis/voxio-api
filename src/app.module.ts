@@ -16,6 +16,7 @@ import { PermissionsModule } from '@/modules/permissions/permissions.module';
 import { ProfileModule } from '@/modules/profile/profile.module';
 import { BotModule } from '@/modules/bot/bot.module';
 import { ClientsModule } from '@/modules/clients/clients.module';
+import { FilesModule } from './modules/files/files.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ClientsModule } from '@/modules/clients/clients.module';
     ProfileModule,
     BotModule,
     ClientsModule,
+    FilesModule,
   ],
   controllers: [],
   providers: [

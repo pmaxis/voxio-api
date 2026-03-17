@@ -1,0 +1,31 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { FilesController } from '@/modules/files/controller/files.controller';
+import { FilesService } from '@/modules/files/service/files.service';
+
+describe('FilesController', () => {
+  let controller: FilesController;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [FilesController],
+      providers: [
+        {
+          provide: FilesService,
+          useValue: {
+            create: jest.fn(),
+            findAll: jest.fn(),
+            findOne: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    controller = module.get<FilesController>(FilesController);
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+});

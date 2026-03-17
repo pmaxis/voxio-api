@@ -30,4 +30,7 @@ export default () => ({
   bot: {
     token: process.env.BOT_TOKEN,
   },
+  storage: {
+    uploadPath: process.env.UPLOAD_PATH || process.env.UPLOADS_PATH || 'uploads',
+  },
 });

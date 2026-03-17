@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Context, Telegraf } from 'telegraf';
 import { Update } from 'telegraf/types';
 import { StartHandler } from '@/modules/bot/handlers/start.handler';
+import { AudioHandler } from '@/modules/bot/handlers/audio.handler';
 
 interface BotHandler {
   register(bot: Telegraf<Context<Update>>): void;
@@ -19,12 +20,13 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly startHandler: StartHandler,
+    private readonly audioHandler: AudioHandler,
   ) {
     this.token = this.configService.get<string>('bot.token');
   }
 
   private getHandlers(): BotHandlerRegistry {
-    return [this.startHandler];
+    return [this.startHandler, this.audioHandler];
   }
 
   private registerHandlers(bot: Telegraf<Context<Update>>): void {
