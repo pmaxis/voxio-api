@@ -14,6 +14,8 @@ import { SessionsModule } from '@/modules/sessions/sessions.module';
 import { RolesModule } from '@/modules/roles/roles.module';
 import { PermissionsModule } from '@/modules/permissions/permissions.module';
 import { ProfileModule } from '@/modules/profile/profile.module';
+import { BotModule } from '@/modules/bot/bot.module';
+import { ClientsModule } from '@/modules/clients/clients.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { ProfileModule } from '@/modules/profile/profile.module';
     RolesModule,
     PermissionsModule,
     ProfileModule,
+    BotModule,
+    ClientsModule,
   ],
   controllers: [],
   providers: [

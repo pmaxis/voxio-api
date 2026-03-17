@@ -17,4 +17,6 @@ export const validationSchema = Joi.object({
 
   ACCESS_TOKEN_TTL: Joi.string().required(),
   REFRESH_TOKEN_TTL: Joi.string().required(),
+
+  BOT_TOKEN: Joi.string().optional().allow(''),
 });

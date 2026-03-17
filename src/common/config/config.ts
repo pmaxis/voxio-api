@@ -27,4 +27,7 @@ export default () => ({
       expiresIn: process.env.REFRESH_TOKEN_TTL,
     },
   },
+  bot: {
+    token: process.env.BOT_TOKEN,
+  },
 });
