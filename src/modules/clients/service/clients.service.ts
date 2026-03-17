@@ -19,6 +19,10 @@ export class ClientsService {
     return this.clientsRepository.findOne(id);
   }
 
+  findByTelegramId(telegramId: string) {
+    return this.clientsRepository.findByTelegramId(telegramId);
+  }
+
   update(id: string, updateClientDto: UpdateClientDto) {
     return this.clientsRepository.update(id, updateClientDto);
   }

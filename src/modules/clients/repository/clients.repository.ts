@@ -23,6 +23,14 @@ export class ClientsRepository {
     });
   }
 
+  async findByTelegramId(telegramId: string) {
+    return this.database.client.findUnique({
+      where: {
+        telegramId,
+      },
+    });
+  }
+
   async update(id: string, data: { username?: string }) {
     return this.database.client.update({
       where: {

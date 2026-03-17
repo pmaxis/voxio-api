@@ -11,8 +11,14 @@ export class StartHandler {
     bot.start(async (ctx) => {
       const telegramId = String(ctx.from.id);
       const username = ctx.from.username ?? undefined;
-      await this.clientsService.create({ telegramId, username });
-      await ctx.reply('Вітаємо! Ви успішно зареєстровані.');
+      const client = await this.clientsService.findByTelegramId(telegramId);
+
+      if (!client) {
+        await this.clientsService.create({ telegramId, username });
+        await ctx.reply('Вітаємо! Ви успішно зареєстровані.');
+      }
+
+      await ctx.reply('Ви вже зареєстровані.');
     });
   }
 }
