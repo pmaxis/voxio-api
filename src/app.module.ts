@@ -1,7 +1,8 @@
 import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { BullModule } from '@nestjs/bullmq';
 import { DatabaseModule } from '@/infrastructure/database/database.module';
 import config from '@/common/config/config';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -14,7 +15,7 @@ import { SessionsModule } from '@/modules/sessions/sessions.module';
 import { RolesModule } from '@/modules/roles/roles.module';
 import { PermissionsModule } from '@/modules/permissions/permissions.module';
 import { ProfileModule } from '@/modules/profile/profile.module';
-import { BotModule } from '@/modules/bot/bot.module';
+import { TelegramModule } from '@/infrastructure/telegram/telegram.module';
 import { ClientsModule } from '@/modules/clients/clients.module';
 import { FilesModule } from './modules/files/files.module';
 import { JobsModule } from './modules/jobs/jobs.module';
@@ -26,6 +27,16 @@ import { SpeechModule } from './infrastructure/speech/speech.module';
   imports: [
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     AbilityModule.forRoot(),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('redis.host', 'localhost'),
+          port: config.get<number>('redis.port', 6379),
+        },
+      }),
+      inject: [ConfigService],
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [config],
@@ -39,7 +50,7 @@ import { SpeechModule } from './infrastructure/speech/speech.module';
     RolesModule,
     PermissionsModule,
     ProfileModule,
-    BotModule,
+    TelegramModule,
     ClientsModule,
     FilesModule,
     JobsModule,

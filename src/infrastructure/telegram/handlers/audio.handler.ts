@@ -1,16 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Context, Telegraf } from 'telegraf';
-import { Input } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import { message } from 'telegraf/filters';
 import { Message } from 'telegraf/types';
 import { ClientsService } from '@/modules/clients/service/clients.service';
 import { CreditsService } from '@/modules/credits/service/credits.service';
 import { FilesService } from '@/modules/files/service/files.service';
-import { FilesStorage } from '@/modules/files/storage/files.storage';
 import { JobsService } from '@/modules/jobs/service/jobs.service';
-import { TranscriptsService } from '@/modules/transcripts/service/transcripts.service';
-import { SpeechService } from '@/infrastructure/speech/speech.service';
+import {
+  AUDIO_QUEUE_CLIENT,
+  type AudioQueueClient,
+} from '@/common/queue/audio-transcription.types';
 import { FileType } from '@/infrastructure/database/generated/enums';
 import { JobStatus } from '@/infrastructure/database/generated/enums';
 import type { UploadedFile } from '@/modules/files/types/uploaded-file.interface';
@@ -26,10 +26,8 @@ export class AudioHandler {
     private readonly clientsService: ClientsService,
     private readonly creditsService: CreditsService,
     private readonly filesService: FilesService,
-    private readonly filesStorage: FilesStorage,
     private readonly jobsService: JobsService,
-    private readonly transcriptsService: TranscriptsService,
-    private readonly speechService: SpeechService,
+    @Inject(AUDIO_QUEUE_CLIENT) private readonly audioQueue: AudioQueueClient,
   ) {}
 
   register(bot: Telegraf<Context<Update>>): void {
@@ -39,6 +37,10 @@ export class AudioHandler {
 
   private async handleAudio(ctx: Context<Update>, type: 'voice' | 'audio'): Promise<void> {
     const msg = ctx.message as VoiceMessage | AudioMessage;
+    const chatId = ctx.chat?.id;
+    if (chatId === undefined) {
+      return;
+    }
     const telegramId = String(ctx.from?.id);
     const fileId = this.getFileId(msg, type);
     const fileName = this.getFileName(msg, type);
@@ -85,54 +87,19 @@ export class AudioHandler {
 
       const job = await this.jobsService.create({
         clientId: client.id,
-        status: JobStatus.PROCESSING,
+        status: JobStatus.QUEUED,
         inputFileId: inputFile.id,
       });
 
-      try {
-        const absolutePath = this.filesStorage.getAbsolutePath(inputFile.url);
-        const { original, translated, audio } = await this.speechService.process(absolutePath);
+      await this.audioQueue.addToAudioQueue({
+        jobId: job.id,
+        chatId,
+        inputFileId: inputFile.id,
+        clientId: client.id,
+        durationSeconds: seconds,
+      });
 
-        const outputUploadedFile: UploadedFile = {
-          fieldname: 'file',
-          originalname: 'output.ogg',
-          encoding: '7bit',
-          mimetype: 'audio/ogg',
-          buffer: audio,
-          size: audio.length,
-        };
-        const outputFile = await this.filesService.create(outputUploadedFile, {
-          type: FileType.OUTPUT_AUDIO,
-        });
-
-        await this.transcriptsService.create({
-          originalText: original,
-          translatedText: translated,
-          jobId: job.id,
-        });
-
-        await this.creditsService.addUsage(client.id, job.id, seconds);
-
-        await this.jobsService.update(job.id, {
-          status: JobStatus.COMPLETED,
-          duration: seconds,
-          outputFileId: outputFile.id,
-        });
-
-        const voiceInput = Input.fromBuffer(audio, 'voice.ogg');
-        if (audio.length <= 1024 * 1024) {
-          await ctx.replyWithVoice(voiceInput);
-        } else {
-          await ctx.replyWithAudio(voiceInput);
-        }
-
-        const newBalance = balance - seconds;
-        await ctx.reply(`Залишилось секунд: ${newBalance}`);
-      } catch (transcribeError) {
-        this.logger.error('Помилка транскрипції', transcribeError);
-        await this.jobsService.update(job.id, { status: JobStatus.FAILED });
-        await ctx.reply('Аудіо збережено, але не вдалося розпізнати текст.');
-      }
+      await ctx.reply('Аудіо в черзі на обробку. Ми повідомимо вас коли буде готово.');
     } catch (error) {
       this.logger.error('Помилка завантаження аудіо', error);
       await ctx.reply('Не вдалося зберегти аудіо. Спробуйте пізніше.');

@@ -22,4 +22,6 @@ export const validationSchema = Joi.object({
   UPLOAD_PATH: Joi.string().optional(),
   UPLOADS_PATH: Joi.string().optional(),
   OPENAI_API_KEY: Joi.string().optional(),
+  REDIS_HOST: Joi.string().optional().default('localhost'),
+  REDIS_PORT: Joi.number().optional().default(6379),
 });

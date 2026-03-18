@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { getQueueToken } from '@nestjs/bullmq';
 import { JobsService } from '@/modules/jobs/service/jobs.service';
 import { JobsRepository } from '@/modules/jobs/repository/jobs.repository';
 import { CreateJobDto } from '@/modules/jobs/dto/create-job.dto';
 import { UpdateJobDto } from '@/modules/jobs/dto/update-job.dto';
 import { JobStatus } from '@/infrastructure/database/generated/enums';
+import { AUDIO_TRANSCRIPTION_QUEUE } from '@/modules/jobs/processor/audio-transcription.processor';
 
 const mockJob = {
   id: 'job-id',
@@ -25,13 +27,21 @@ const mockJobsRepository = {
   delete: jest.fn(),
 };
 
+const mockAudioQueue = {
+  add: jest.fn(),
+};
+
 describe('JobsService', () => {
   let service: JobsService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [JobsService, { provide: JobsRepository, useValue: mockJobsRepository }],
+      providers: [
+        JobsService,
+        { provide: JobsRepository, useValue: mockJobsRepository },
+        { provide: getQueueToken(AUDIO_TRANSCRIPTION_QUEUE), useValue: mockAudioQueue },
+      ],
     }).compile();
 
     service = module.get<JobsService>(JobsService);
@@ -126,6 +136,23 @@ describe('JobsService', () => {
 
       expect(mockJobsRepository.delete).toHaveBeenCalledWith('job-id');
       expect(result).toEqual(mockJob);
+    });
+  });
+
+  describe('addToAudioQueue', () => {
+    it('should add job to audio queue', async () => {
+      const payload = {
+        jobId: 'job-id',
+        chatId: 123,
+        inputFileId: 'file-id',
+        clientId: 'client-id',
+        durationSeconds: 10,
+      };
+      mockAudioQueue.add.mockResolvedValue({ id: 'queue-job-id' });
+
+      await service.addToAudioQueue(payload);
+
+      expect(mockAudioQueue.add).toHaveBeenCalledWith('transcribe', payload);
     });
   });
 });
