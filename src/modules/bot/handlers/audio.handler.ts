@@ -4,10 +4,15 @@ import { Input } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import { message } from 'telegraf/filters';
 import { Message } from 'telegraf/types';
+import { ClientsService } from '@/modules/clients/service/clients.service';
+import { CreditsService } from '@/modules/credits/service/credits.service';
 import { FilesService } from '@/modules/files/service/files.service';
 import { FilesStorage } from '@/modules/files/storage/files.storage';
+import { JobsService } from '@/modules/jobs/service/jobs.service';
+import { TranscriptsService } from '@/modules/transcripts/service/transcripts.service';
 import { SpeechService } from '@/infrastructure/speech/speech.service';
 import { FileType } from '@/infrastructure/database/generated/enums';
+import { JobStatus } from '@/infrastructure/database/generated/enums';
 import type { UploadedFile } from '@/modules/files/types/uploaded-file.interface';
 
 type VoiceMessage = Message.VoiceMessage;
@@ -18,8 +23,12 @@ export class AudioHandler {
   private readonly logger = new Logger(AudioHandler.name);
 
   constructor(
+    private readonly clientsService: ClientsService,
+    private readonly creditsService: CreditsService,
     private readonly filesService: FilesService,
     private readonly filesStorage: FilesStorage,
+    private readonly jobsService: JobsService,
+    private readonly transcriptsService: TranscriptsService,
     private readonly speechService: SpeechService,
   ) {}
 
@@ -29,12 +38,27 @@ export class AudioHandler {
   }
 
   private async handleAudio(ctx: Context<Update>, type: 'voice' | 'audio'): Promise<void> {
-    const message = ctx.message as VoiceMessage | AudioMessage;
-    const fileId = this.getFileId(message, type);
-    const fileName = this.getFileName(message, type);
+    const msg = ctx.message as VoiceMessage | AudioMessage;
+    const telegramId = String(ctx.from?.id);
+    const fileId = this.getFileId(msg, type);
+    const fileName = this.getFileName(msg, type);
+    const duration = this.getDuration(msg, type);
 
     if (!fileId) {
       await ctx.reply('Не вдалося отримати аудіо.');
+      return;
+    }
+
+    const client = await this.clientsService.findByTelegramId(telegramId);
+    if (!client) {
+      await ctx.reply('Спочатку натисніть /start для реєстрації.');
+      return;
+    }
+
+    const seconds = Math.max(1, duration ?? 1);
+    const balance = await this.creditsService.getBalance(client.id);
+    if (balance < seconds) {
+      await ctx.reply(`Недостатньо секунд. Залишилось: ${balance}. Потрібно: ${seconds}.`);
       return;
     }
 
@@ -50,20 +74,26 @@ export class AudioHandler {
         fieldname: 'file',
         originalname: fileName,
         encoding: '7bit',
-        mimetype: this.getMimeType(message, type),
+        mimetype: this.getMimeType(msg, type),
         buffer,
         size: buffer.length,
       };
 
-      const file = await this.filesService.create(uploadedFile, {
+      const inputFile = await this.filesService.create(uploadedFile, {
         type: FileType.INPUT_AUDIO,
       });
 
-      try {
-        const absolutePath = this.filesStorage.getAbsolutePath(file.url);
-        const { audio } = await this.speechService.process(absolutePath);
+      const job = await this.jobsService.create({
+        clientId: client.id,
+        status: JobStatus.PROCESSING,
+        inputFileId: inputFile.id,
+      });
 
-        const outputFile: UploadedFile = {
+      try {
+        const absolutePath = this.filesStorage.getAbsolutePath(inputFile.url);
+        const { original, translated, audio } = await this.speechService.process(absolutePath);
+
+        const outputUploadedFile: UploadedFile = {
           fieldname: 'file',
           originalname: 'output.ogg',
           encoding: '7bit',
@@ -71,8 +101,22 @@ export class AudioHandler {
           buffer: audio,
           size: audio.length,
         };
-        await this.filesService.create(outputFile, {
+        const outputFile = await this.filesService.create(outputUploadedFile, {
           type: FileType.OUTPUT_AUDIO,
+        });
+
+        await this.transcriptsService.create({
+          originalText: original,
+          translatedText: translated,
+          jobId: job.id,
+        });
+
+        await this.creditsService.addUsage(client.id, job.id, seconds);
+
+        await this.jobsService.update(job.id, {
+          status: JobStatus.COMPLETED,
+          duration: seconds,
+          outputFileId: outputFile.id,
         });
 
         const voiceInput = Input.fromBuffer(audio, 'voice.ogg');
@@ -81,10 +125,13 @@ export class AudioHandler {
         } else {
           await ctx.replyWithAudio(voiceInput);
         }
+
+        const newBalance = balance - seconds;
+        await ctx.reply(`Залишилось секунд: ${newBalance}`);
       } catch (transcribeError) {
         this.logger.error('Помилка транскрипції', transcribeError);
+        await this.jobsService.update(job.id, { status: JobStatus.FAILED });
         await ctx.reply('Аудіо збережено, але не вдалося розпізнати текст.');
-        return;
       }
     } catch (error) {
       this.logger.error('Помилка завантаження аудіо', error);
@@ -107,6 +154,17 @@ export class AudioHandler {
         return (message as VoiceMessage).voice.file_id;
       case 'audio':
         return (message as AudioMessage).audio.file_id;
+      default:
+        return undefined;
+    }
+  }
+
+  private getDuration(message: VoiceMessage | AudioMessage, type: string): number | undefined {
+    switch (type) {
+      case 'voice':
+        return (message as VoiceMessage).voice?.duration;
+      case 'audio':
+        return (message as AudioMessage).audio?.duration;
       default:
         return undefined;
     }

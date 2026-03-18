@@ -17,6 +17,9 @@ import { ProfileModule } from '@/modules/profile/profile.module';
 import { BotModule } from '@/modules/bot/bot.module';
 import { ClientsModule } from '@/modules/clients/clients.module';
 import { FilesModule } from './modules/files/files.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+import { CreditsModule } from './modules/credits/credits.module';
+import { TranscriptsModule } from './modules/transcripts/transcripts.module';
 import { SpeechModule } from './infrastructure/speech/speech.module';
 
 @Module({
@@ -39,6 +42,9 @@ import { SpeechModule } from './infrastructure/speech/speech.module';
     BotModule,
     ClientsModule,
     FilesModule,
+    JobsModule,
+    CreditsModule,
+    TranscriptsModule,
   ],
   controllers: [],
   providers: [
