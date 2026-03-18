@@ -1,6 +1,6 @@
 # Voxio API
 
-REST API for the Voxio application. Built with NestJS, Prisma, and PostgreSQL. Provides authentication (JWT + refresh tokens in HTTP-only cookies), user management, roles, permissions, and session management.
+REST API for the Voxio application. Built with NestJS, Prisma, and PostgreSQL. Provides authentication (JWT + refresh tokens in HTTP-only cookies), user management, roles, permissions, sessions, and Telegram bot integration for audio processing and transcription.
 
 ## Tech Stack
 
@@ -8,15 +8,18 @@ REST API for the Voxio application. Built with NestJS, Prisma, and PostgreSQL. P
 - **Framework:** [NestJS](https://nestjs.com/) 11
 - **ORM:** [Prisma](https://www.prisma.io/) 7 (PostgreSQL)
 - **Auth:** JWT (access tokens) + signed HTTP-only cookies (refresh tokens), Passport, bcrypt
+- **Queue:** [BullMQ](https://docs.bullmq.io/) + Redis
 - **Validation:** class-validator, class-transformer
 - **Security:** Helmet, Throttler, CORS
 - **Config:** @nestjs/config, Joi
+- **Integrations:** Telegraf (Telegram Bot), OpenAI (speech-to-text)
 
 ## Prerequisites
 
 - Node.js 20+
 - pnpm 10+
 - PostgreSQL
+- Redis
 
 ## Setup
 
@@ -34,7 +37,7 @@ Create a `.env` file in the project root. Required variables:
 |----------|-------------|---------|
 | `PORT` | Server port | `3000` |
 | `NODE_ENV` | Environment | `development` or `production` |
-| `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:5173,http://localhost:5174` |
+| `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:5173` |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/db_name?schema=public` |
 | `POSTGRES_USER` | PostgreSQL user (for Docker) | `username` |
 | `POSTGRES_PASSWORD` | PostgreSQL password (for Docker) | `password` |
@@ -46,6 +49,11 @@ Create a `.env` file in the project root. Required variables:
 | `REFRESH_TOKEN_SECRET` | Secret for JWT refresh tokens | `your-secret` |
 | `ACCESS_TOKEN_TTL` | Access token lifetime | `15m` |
 | `REFRESH_TOKEN_TTL` | Refresh token lifetime | `7d` |
+| `REDIS_HOST` | Redis host | `localhost` |
+| `REDIS_PORT` | Redis port | `6379` |
+| `BOT_TOKEN` | Telegram Bot Token (optional) | — |
+| `OPENAI_API_KEY` | OpenAI API key for transcription (optional) | — |
+| `UPLOAD_PATH` / `UPLOADS_PATH` | Path for uploaded files storage | `uploads` |
 
 ### 3. Database
 
@@ -86,7 +94,7 @@ The API listens on `http://localhost:PORT` (default 3000).
 
 ## Docker
 
-The project includes a separate `docker-compose.yml` for API + PostgreSQL + Adminer.
+The project includes `docker-compose.yml` for API + PostgreSQL + Redis + Adminer.
 
 ```bash
 docker compose up -d
@@ -94,6 +102,7 @@ docker compose up -d
 
 - **API:** http://localhost:3000
 - **PostgreSQL:** localhost:5432
+- **Redis:** localhost:6379
 - **Adminer** (DB admin UI): http://localhost:8080 — System: PostgreSQL, Server: postgres, credentials from `.env`
 
 For Docker with nginx proxy (frontend at `/api`), set `COOKIE_PATH=/api/auth/refresh` and `COOKIE_SECURE=false` in `.env`.
@@ -103,6 +112,24 @@ Run seed manually in Docker:
 ```bash
 docker compose exec voxio-api node dist/prisma/seeds/seed.js
 ```
+
+## Modules
+
+| Module | Description |
+|--------|-------------|
+| `auth` | Login, register, refresh, logout |
+| `users` | System users |
+| `roles` | Roles |
+| `permissions` | Permissions |
+| `sessions` | User sessions |
+| `profile` | Current user profile |
+| `clients` | Clients (Telegram users) |
+| `credits` | Client credits |
+| `files` | Files (audio) |
+| `jobs` | Transcription jobs (BullMQ) |
+| `transcripts` | Transcripts |
+| `telegram` | Telegram Bot (audio handling, job creation) |
+| `speech` | OpenAI Whisper (speech-to-text) |
 
 ## Security
 
@@ -130,7 +157,7 @@ pnpm test:e2e
 
 | Script | Description |
 |--------|-------------|
-| `pnpm build` | Build for production (includes seed compilation). |
+| `pnpm build` | Build for production (includes seed). |
 | `pnpm seed` | Run database seed (requires build first). |
 | `pnpm start` | Start (no watch). |
 | `pnpm start:dev` | Start in watch mode. |
@@ -142,9 +169,9 @@ pnpm test:e2e
 
 - `src/app.module.ts` — Root module (throttling, config, global JWT guard).
 - `src/main.ts` — Bootstrap (validation pipe, cookie parser, CORS, Helmet).
-- `src/common/` — Config, guards, decorators, utilities.
-- `src/infrastructure/` — Database (Prisma), tokens, cookies.
-- `src/modules/` — Feature modules: `auth`, `users`, `roles`, `permissions`, `sessions`.
+- `src/common/` — Config, guards, decorators, utilities, ability (CASL).
+- `src/infrastructure/` — Database (Prisma), Telegram, Speech (OpenAI), queue.
+- `src/modules/` — Feature modules: auth, users, roles, permissions, sessions, profile, clients, credits, files, jobs, transcripts.
 - `prisma/schema/` — Prisma schema (multi-file).
 - `prisma/seeds/` — Database seed scripts.
 
