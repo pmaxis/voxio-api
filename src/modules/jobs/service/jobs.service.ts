@@ -36,12 +36,10 @@ export class JobsService {
   }
 
   async update(id: string, updateJobDto: UpdateJobDto) {
-    await this.findOne(id);
     return this.jobsRepository.update(id, updateJobDto);
   }
 
   async remove(id: string) {
-    await this.findOne(id);
     return this.jobsRepository.delete(id);
   }
 

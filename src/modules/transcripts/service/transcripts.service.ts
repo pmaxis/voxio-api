@@ -28,12 +28,10 @@ export class TranscriptsService {
   }
 
   async update(id: string, updateTranscriptDto: UpdateTranscriptDto) {
-    await this.findOne(id);
     return this.transcriptsRepository.update(id, updateTranscriptDto);
   }
 
   async remove(id: string) {
-    await this.findOne(id);
     return this.transcriptsRepository.delete(id);
   }
 }

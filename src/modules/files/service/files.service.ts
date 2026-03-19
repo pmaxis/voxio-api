@@ -37,7 +37,6 @@ export class FilesService {
   }
 
   async update(id: string, updateFileDto: UpdateFileDto) {
-    await this.findOne(id);
     return this.filesRepository.update(id, updateFileDto);
   }
 

@@ -57,12 +57,10 @@ export class CreditsService {
   }
 
   async update(id: string, updateCreditDto: UpdateCreditDto) {
-    await this.findOne(id);
     return this.creditsRepository.update(id, updateCreditDto);
   }
 
   async remove(id: string) {
-    await this.findOne(id);
     return this.creditsRepository.delete(id);
   }
 }
